@@ -28,7 +28,7 @@ deploy: build
 		gapminder-03 Rscript /plumber/plumber-apis/deploy.R;
 
 	sleep 3;
-	firefox 127.0.0.1:8000/echo/msg='hello world';
+	firefox 127.0.0.1:8000/echo?msg='hello world';
 	
 stop-deploy:
 	docker stop gapminder-03-deploy;
