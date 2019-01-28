@@ -1,21 +1,30 @@
 ---
 title: "gapminder exploratory analysis"
-output: html_document
+author: Phil Chapman
+date: 2019-01-28
+output: 
+    html_document:
+        number_sections: yes
+        theme: cosmo
+        highlight: tango
+        toc: yes
+        toc_depth: 3
+        code_folding: show
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction
+# Introduction
 
 This report contains a brief example analysis of the famous gapminder data. See [Managing Many Models](https://r4ds.had.co.nz/many-models.html) in the [R For Data Science book](https://r4ds.had.co.nz/) by [Hadley Wickham](https://twitter.com/hadleywickham).
 
-## Set up
+# Set up
 
-### Load R libraries
+## Load R libraries
 
-```{r}
+```{r, message=FALSE}
 library(gapminder)
 library(dplyr)
 library(ggplot2)
@@ -28,7 +37,8 @@ Plot all countries:
 ```{r}
 gapminder %>% 
   ggplot(aes(year, lifeExp, group = country)) +
-    geom_line(alpha = 1/3)
+    geom_line(alpha = 1/3) +
+    theme_bw()
 ```
 
 ## Session Info
