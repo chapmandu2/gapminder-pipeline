@@ -1,5 +1,5 @@
 ---
-title: "gapminder exploratory analysis"
+title: "Gapminder Exploratory Analysis"
 author: Phil Chapman
 date: 2019-01-28
 output: 
@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-This report contains a brief example analysis of the famous gapminder data. See [Managing Many Models](https://r4ds.had.co.nz/many-models.html) in the [R For Data Science book](https://r4ds.had.co.nz/) by [Hadley Wickham](https://twitter.com/hadleywickham).
+This report contains a brief example analysis of the famous gapminder data. See [Managing Many Models](https://r4ds.had.co.nz/many-models.html) in the [R For Data Science book](https://r4ds.had.co.nz/) by [Hadley Wickham](https://twitter.com/hadleywickham) for further information on the data and techniques used in this analysis.
 
 # Set up
 
@@ -33,9 +33,11 @@ library(purrr)
 library(broom)
 ```
 
-## Explore data
+# Explore data
 
-Plot all countries:
+## All data
+
+Plot life expectancy over time for all countries on a single plot.  There is general upward trend it is difficult to discern how countries or continents might differ. 
 
 ```{r}
 gapminder %>% 
@@ -44,7 +46,9 @@ gapminder %>%
     theme_bw()
 ```
 
-Filter data for a single country:
+## Single country
+
+Filter out data for a single country:
 
 ```{r}
 nz_data <- gapminder %>%
@@ -52,7 +56,7 @@ nz_data <- gapminder %>%
 nz_data
 ```
 
-Plot data for a single country:
+Ploting the data for New Zealand shows that life expectancy has increased over time:
 
 ```{r}
 ggplot(nz_data, aes(year, lifeExp, group = country)) +
@@ -62,7 +66,7 @@ ggplot(nz_data, aes(year, lifeExp, group = country)) +
 
 ## Fit a model
 
-Fit a linear model for NZ data:
+Fitting a linear model for the NZ data lets us to estimate the rate of increase of life expectancy:
 
 ```{r}
 nz_model <- lm(lifeExp ~ year, data = nz_data)
@@ -78,7 +82,7 @@ broom::tidy(nz_model)
 
 ## Fit many models
 
-To fit a model for each country:
+To fit a linear model for each country:
 
 ```{r}
 many_models <- gapminder %>%
@@ -96,9 +100,9 @@ many_models$mod[[1]]
 
 ```
 
-## Extract info on many models
+## Extract coefficients for many countries
 
-Next we wish to extract the intercept and slope for each linear model:
+Next we wish to extract the intercept and slope for each linear model, this will enable us to compare rate of increase of life expectancy across countries:
 
 ```{r}
 all_countries_coefficients <- many_models %>%
@@ -110,7 +114,7 @@ all_countries_coefficients
 
 ## Plot info on many models
 
-Finally plot the slope for each country (ie rate of increase of life expectancy) and colour by continent.  This shows that countries in Europe have shown a smaller increase in life expectancy than those in Asia, whereas countries in Africa have a more variable change.
+Finally plot the rate of increase in life expectancy per country and colour by continent.  This shows that countries in Europe have shown a smaller increase in life expectancy than those in Asia, whereas countries in Africa have a more variable change.
 
 ```{r}
 ggplot(all_countries_coefficients, aes(continent, slope, color = continent)) +
