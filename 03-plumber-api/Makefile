@@ -23,12 +23,12 @@ remove: stop
 deploy: build
 	docker run -d -p 8000:8000 \
 		-e DISABLE_AUTH=true \
-		-e API_SCRIPT=basic-test-api.R \
+		-e API_SCRIPT=gapminder-api.R \
 		--name='gapminder-03-deploy' \
 		gapminder-03 Rscript /plumber/plumber-apis/deploy.R;
 
 	sleep 3;
-	firefox 127.0.0.1:8000/echo?msg='hello world';
+	firefox 127.0.0.1:8000/plot;
 	
 stop-deploy:
 	docker stop gapminder-03-deploy;
