@@ -28,6 +28,9 @@ This report contains a brief example analysis of the famous gapminder data. See 
 library(gapminder)
 library(dplyr)
 library(ggplot2)
+library(tidyr)
+library(purrr)
+library(broom)
 ```
 
 ## Explore data
@@ -41,7 +44,87 @@ gapminder %>%
     theme_bw()
 ```
 
-## Session Info
+Filter data for a single country:
+
+```{r}
+nz_data <- gapminder %>%
+  filter(country == 'New Zealand')
+nz_data
+```
+
+Plot data for a single country:
+
+```{r}
+ggplot(nz_data, aes(year, lifeExp, group = country)) +
+    geom_line(alpha = 1/3) +
+    theme_bw()
+```
+
+## Fit a model
+
+Fit a linear model for NZ data:
+
+```{r}
+nz_model <- lm(lifeExp ~ year, data = nz_data)
+nz_model
+```
+
+Extract coefficients:
+
+```{r}
+coef(nz_model)
+broom::tidy(nz_model)
+```
+
+## Fit many models
+
+To fit a model for each country:
+
+```{r}
+many_models <- gapminder %>%
+  group_by(continent, country) %>%
+  tidyr::nest() %>%
+  mutate(mod = purrr::map(data, ~ lm(lifeExp ~ year, data = .)))
+many_models
+```
+
+Look at the first country:
+
+```{r}
+many_models$data[[1]]
+many_models$mod[[1]]
+
+```
+
+## Extract info on many models
+
+Next we wish to extract the intercept and slope for each linear model:
+
+```{r}
+all_countries_coefficients <- many_models %>%
+  mutate(intercept = purrr::map_dbl(mod, ~ coef(.)['(Intercept)']),
+         slope = purrr::map_dbl(mod, ~ coef(.)['year'])) %>%
+  dplyr::select(-data, -mod) 
+all_countries_coefficients
+```
+
+## Plot info on many models
+
+Finally plot the slope for each country (ie rate of increase of life expectancy) and colour by continent.  This shows that countries in Europe have shown a smaller increase in life expectancy than those in Asia, whereas countries in Africa have a more variable change.
+
+```{r}
+ggplot(all_countries_coefficients, aes(continent, slope, color = continent)) +
+  geom_violin() +
+  geom_point(position = position_jitter(width=0.3)) +
+  theme_bw()
+```
+
+
+# Conclusion
+
+In this brief analysis we have explored the gapminder data using the list-cols approach to fit models for different countries.  Plotting the rate of increase in life expectancy shows differences between continents: asia sees the biggest increases with europe the smallest, and with africa having a range of outcomes.
+
+# Session Info
 
 ```{r}
 sessionInfo()
