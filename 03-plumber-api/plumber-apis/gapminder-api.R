@@ -25,3 +25,9 @@ function(country="New Zealand"){
   p <- get_data(country) %>% ggplot(aes(year, lifeExp)) + geom_line() + theme_bw()
   print(p)
 }
+
+#' Fit a model for a country
+#' @get /model
+function(country="New Zealand"){
+  get_data(country) %>% lm(lifeExp ~ year, data=.) %>% broom::tidy()
+}
