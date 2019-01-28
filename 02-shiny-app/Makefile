@@ -10,8 +10,8 @@ run: build
 
 	sleep 3;
 	firefox 127.0.0.1:8787;
-	firefox 127.0.0.1:3838;
-
+	firefox 127.0.0.1:3838/users/rstudio;
+	
 stop:
 	docker stop gapminder-02-ct
 
@@ -20,5 +20,18 @@ start:
 
 remove: stop
 	docker rm gapminder-02-ct
+	
+deploy: build
+	docker run -d -p 9001:3838 \
+		-e DISABLE_AUTH=true \
+		--name='gapminder-02-deploy' \
+		gapminder-02;
+
+	sleep 3;
+	firefox 127.0.0.1:9001/users/rstudio/plot-app/;
+	
+stop-deploy:
+	docker stop gapminder-02-deploy;
+	docker rm gapminder-02-deploy;
 
 
