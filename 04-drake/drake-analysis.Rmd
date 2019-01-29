@@ -1,0 +1,48 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Set up 
+
+```{r}
+library(dplyr)
+library(purrr)
+library(furrr)
+library(ggplot2)
+library(gapminder)
+library(tidyr)
+```
+
+Previously we made multiple models with `purrr::map`
+
+```{r}
+nested_data <- gapminder %>%
+  group_by(continent, country) %>%
+  tidyr::nest() 
+
+ptm <- proc.time()
+many_models <- nested_data %>%
+  mutate(mod = purrr::map(data, ~ lm(lifeExp ~ year, .)))
+many_models
+proc.time() - ptm
+```
+
+Here the `lm` function is being run 142 times, once for each country. This is fine but what happens if the function is slower?
+
+```{r}
+slow_lm <- function(df, sleep=0) {
+  Sys.sleep(sleep)
+  lm(lifeExp ~ year, df)
+}
+
+ptm <- proc.time()
+many_models_slow <- nested_data %>%
+  mutate(mod = purrr::map(data, slow_lm, sleep=0.02))
+proc.time() - ptm
+
+```
