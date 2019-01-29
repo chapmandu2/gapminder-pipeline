@@ -16,6 +16,7 @@ library(furrr)
 library(ggplot2)
 library(gapminder)
 library(tidyr)
+library(future)
 ```
 
 Previously we made multiple models with `purrr::map`
@@ -46,3 +47,23 @@ many_models_slow <- nested_data %>%
 proc.time() - ptm
 
 ```
+
+A quick fix is to use the `furrr` library which allows us to use the `future` package and its abilities to do parallel computation:
+
+```{r}
+plan(multiprocess(workers=2))
+ptm <- proc.time()
+many_models_furrr <- nested_data %>%
+  mutate(mod = furrr::future_map(data, slow_lm, sleep=0.02))
+proc.time() - ptm
+```
+
+
+With two processors, the analysis is approximately twice as quick.  However there is an overhead from the parallelisation which reduces the gain.  Equally, since the slow function is quite quick anyway, this overhead makes more of a difference.  Nevertheless, the `furrr` package provides a very easy and quick (in terms of cognitive time) way of reducing computation time.
+
+Whilst `furrr` and the list-cols method is very convenient and powerful, it may not be able to scale to more complex problems.  One reason for this is memory: the list-cols method requires R to hold relatively large objects in a single data frame rather than, say, writing them to disk.  In effect we end up storing many many copies of our data in memory in R since lm fit objects contain a copy of the data used to create them.
+
+Another issue is that we end up running the entire analysis every time we knit the Rmd document.  This quickly becomes annoying as the analysis becomes longer, as the same calculations have to be carried out over and over again.  This is where the `drake` package comes to our rescue as it allows the analysis to be broken down into a pipeline of tasks, with changes to the pipeline only requiring steps downstream of the change to be re-run.  It also offers much more control over parallelisation.
+
+
+
