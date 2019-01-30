@@ -1,0 +1,40 @@
+---
+title: "Drake Pipeline"
+author: Phil Chapman
+date: 2019-01-29
+output: 
+    html_document:
+        number_sections: yes
+        theme: cosmo
+        highlight: tango
+        toc: yes
+        toc_depth: 3
+        code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Introduction
+
+
+
+# Set up
+
+## Load R libraries
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(gapminder)
+library(future)
+library(drake)
+```
+
+
+# Drake pipeline
+
+```{r}
+
+
+```
