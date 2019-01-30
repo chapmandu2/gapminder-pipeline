@@ -29,6 +29,7 @@ library(ggplot2)
 library(gapminder)
 library(future)
 library(drake)
+library(clustermq)
 ```
 
 
@@ -167,3 +168,28 @@ View the output
 ```{r}
 readd(plot)
 ```
+
+## Do it in parallel
+
+```{r}
+plan(multicore(workers=4))
+
+drake::clean()
+pt <- proc.time()
+make(par_plan, parallelism = "future", jobs = 4, verbose=0)
+proc.time() - pt
+
+drake::clean()
+pt <- proc.time()
+make(par_plan, parallelism = "loop", verbose=0)
+proc.time() - pt
+
+drake::clean()
+pt <- proc.time()
+options(clustermq.scheduler = "multicore")
+make(par_plan, parallelism = "clustermq", verbose=0, jobs=4)
+proc.time() - pt
+
+```
+
+In this case loop is the quickest since the individual jobs are very fast.  Future is the slowest because of the overhead of the scheduler.  Clustermq is very fast as the workers are persistent.  All cases are slower than using furrr or even foreach, but when the individual tasks are bigger we will get a bigger benefit.
