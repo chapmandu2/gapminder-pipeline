@@ -107,6 +107,63 @@ readd(plot)
 ## Set up very complex plan
 
 ```{r}
+calculate_slope <- function(df, country, sleep) {
+  mod <- df %>%
+    dplyr::filter(country == !!country) %>%
+    slow_lm(sleep = sleep)
+  
+    data_frame(country=!!country, slope=coef(mod)[['year']])
+}
+
+calculate_slope(gapminder, 'New Zealand', 0)
 
 
+```
+
+Define the plan
+
+```{r}
+drake::clean(destroy=TRUE)
+
+gm_countries <- gapminder %>% distinct(country) %>% 
+  #slice(1:20) %>% 
+  unlist() %>% unname() %>% as.character()
+
+par_plan = drake_plan(
+  data_par = gapminder,
+  countries_par = unique(data_par$country) %>% as.character(),
+  results_par = target(
+    calculate_slope(df=data_par, country = country_val, sleep = 0),
+    transform = map(country_val = !!gm_countries)
+  ),
+  results = target(
+    bind_rows(results_par),
+    transform = combine(results_par)
+  ),
+  plot_data = data_par %>%
+    distinct(continent, country) %>%
+    mutate_all(as.character) %>%
+    inner_join(results, by='country'),
+  plot = ggplot(plot_data, aes(continent, slope, color = continent)) +
+    geom_violin() +
+    geom_point(position = position_jitter(width=0.3)) +
+    theme_bw(),
+  trace=TRUE
+)
+```
+
+View the plan
+
+```{r}
+par_plan
+```
+
+Make the plan
+```{r}
+make(par_plan)
+```
+
+View the output
+```{r}
+readd(plot)
 ```
