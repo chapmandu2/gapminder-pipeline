@@ -32,6 +32,8 @@ library(ggplot2)
 library(gapminder)
 library(tidyr)
 library(future)
+library(foreach)
+library(doFuture)
 ```
 
 # Working with computationally expensive models
@@ -79,7 +81,7 @@ proc.time() - ptm
 
 ## Using furrr
 
-The `furrr` library which allows us to use the `future` package and its abilities to do parallel computation:
+The `furrr` library which allows us to use the `future` package and its abilities to do parallel computation - each model fit is split off into its own process:
 
 ```{r}
 plan(multiprocess(workers=2))
@@ -91,6 +93,31 @@ proc.time() - ptm
 
 ## Using foreach
 
+The other approach is to break the data frame into chunks and process each one seperately using `foreach`.
 
+First split into a list of 4 data frames
 
+```{r}
+split_data <- nested_data %>% 
+  mutate(proc_grp = sample(1:4, size = nrow(.), replace=TRUE)) %>%
+  split(.$proc_grp)
+length(split_data)
+```
+
+Then use foreach.  This works but is much more code than using `furrr`!
+
+```{r}
+registerDoFuture()
+plan(multiprocess(workers = 2))
+
+ptm <- proc.time()
+split_results <- foreach(i = 1:length(split_data)) %dopar% {
+    mutate(split_data[[i]], mod = purrr::map(data, slow_lm, sleep=0.02))
+  } %>%
+  bind_rows()
+proc.time() - ptm
+
+```
+
+## Comparisons
 
