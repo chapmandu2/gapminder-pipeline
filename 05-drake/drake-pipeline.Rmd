@@ -34,6 +34,75 @@ library(drake)
 
 # Drake pipeline
 
+## Define functions
+
+```{r}
+slow_lm <- function(df, sleep=0) {
+  Sys.sleep(sleep)
+  lm(lifeExp ~ year, df)
+}
+```
+
+## Set up simple plan
+
+```{r}
+gm_pipeline_simple <- drake_plan(
+  data_simple = gapminder::gapminder,
+  plot_simple = ggplot(data_simple, aes(x=year, y=lifeExp, group=country, color=continent)) + 
+    geom_line(alpha=0.3) + theme_bw()
+)
+```
+
+Run the plan:
+
+```{r}
+make(gm_pipeline_simple)
+```
+
+View output:
+
+```{r}
+readd(plot_simple)
+```
+
+## Set up more complex plan
+
+```{r}
+gm_pipeline_complex <- drake_plan(
+  data = gapminder::gapminder,
+  many_models = data %>%
+    group_by(continent, country) %>%
+    tidyr::nest() %>%
+    mutate(mod = purrr::map(data, slow_lm)),
+  all_countries_coefficients = many_models %>%
+    mutate(tidy_mod = purrr::map(mod, broom::tidy)) %>%
+    dplyr::select(-data, -mod) %>%
+    tidyr::unnest() %>%
+    dplyr::filter(term == 'year'),
+  plot = ggplot(all_countries_coefficients, aes(continent, estimate, color = continent)) +
+    geom_violin() +
+    geom_point(position = position_jitter(width=0.3)) +
+    theme_bw(),
+  strings_in_dots = "literals"
+)
+
+```
+
+Run the plan:
+
+```{r}
+make(gm_pipeline_complex)
+```
+
+View output:
+
+```{r}
+readd(all_countries_coefficients)
+readd(plot)
+```
+
+## Set up very complex plan
+
 ```{r}
 
 
