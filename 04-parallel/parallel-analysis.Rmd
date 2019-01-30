@@ -157,3 +157,12 @@ We can see here that `foreach` is slightly quicker.
 
 `furrr` provides a very convenient way of parallelising analysis code.  However, if the number of parallel tasks greatly exceeds the number of processors available, it can be beneficial to reduce the number of tasks by chunking the data frame instead.
 
+# Next steps
+
+Only used processors on a single computer here.  Various ways of extending to ad-hoc computer clusters, HPC and the cloud.  In particular the batchtools and future.batchtools packages allow the approaches above to be extended to a variety of environments including SGE, Torque and Slurm HPCs and Docker Swarm.
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
