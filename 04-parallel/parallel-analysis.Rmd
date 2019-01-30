@@ -1,15 +1,30 @@
 ---
-title: "Untitled"
-output: html_document
+title: "Parallelised Analyses"
+author: Phil Chapman
+date: 2019-01-28
+output: 
+    html_document:
+        number_sections: yes
+        theme: cosmo
+        highlight: tango
+        toc: yes
+        toc_depth: 3
+        code_folding: show
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Set up 
+# Introduction
 
-```{r}
+
+
+# Set up
+
+## Load R libraries
+
+```{r, message=FALSE}
 library(dplyr)
 library(purrr)
 library(furrr)
@@ -18,6 +33,10 @@ library(gapminder)
 library(tidyr)
 library(future)
 ```
+
+# Working with computationally expensive models
+
+## Previously
 
 Previously we made multiple models with `purrr::map`
 
@@ -33,14 +52,22 @@ many_models
 proc.time() - ptm
 ```
 
-Here the `lm` function is being run 142 times, once for each country. This is fine but what happens if the function is slower?
+## Slow fitting models
+
+In the previous example, the `lm` function is being run 142 times, once for each country. This is fine as the model fits very quickly, but what happens if the function is slower?
+
+First let's define a function called `slow_lm` which goes to sleep for a period of time in addition to fitting the model
 
 ```{r}
 slow_lm <- function(df, sleep=0) {
   Sys.sleep(sleep)
   lm(lifeExp ~ year, df)
 }
+```
 
+Now when we fit the model, it takes longer (unsurprisingly):
+
+```{r}
 ptm <- proc.time()
 many_models_slow <- nested_data %>%
   mutate(mod = purrr::map(data, slow_lm, sleep=0.02))
@@ -48,7 +75,11 @@ proc.time() - ptm
 
 ```
 
-A quick fix is to use the `furrr` library which allows us to use the `future` package and its abilities to do parallel computation:
+# Parallelisation
+
+## Using furrr
+
+The `furrr` library which allows us to use the `future` package and its abilities to do parallel computation:
 
 ```{r}
 plan(multiprocess(workers=2))
@@ -58,12 +89,8 @@ many_models_furrr <- nested_data %>%
 proc.time() - ptm
 ```
 
+## Using foreach
 
-With two processors, the analysis is approximately twice as quick.  However there is an overhead from the parallelisation which reduces the gain.  Equally, since the slow function is quite quick anyway, this overhead makes more of a difference.  Nevertheless, the `furrr` package provides a very easy and quick (in terms of cognitive time) way of reducing computation time.
-
-Whilst `furrr` and the list-cols method is very convenient and powerful, it may not be able to scale to more complex problems.  One reason for this is memory: the list-cols method requires R to hold relatively large objects in a single data frame rather than, say, writing them to disk.  In effect we end up storing many many copies of our data in memory in R since lm fit objects contain a copy of the data used to create them.
-
-Another issue is that we end up running the entire analysis every time we knit the Rmd document.  This quickly becomes annoying as the analysis becomes longer, as the same calculations have to be carried out over and over again.  This is where the `drake` package comes to our rescue as it allows the analysis to be broken down into a pipeline of tasks, with changes to the pipeline only requiring steps downstream of the change to be re-run.  It also offers much more control over parallelisation.
 
 
 
