@@ -121,3 +121,39 @@ proc.time() - ptm
 
 ## Comparisons
 
+Although there seems very little difference in the examples above, the following is happening behind the scences:
+
+- furrr creates 142 seperate jobs over 2 processors
+- foreach creates 4 jobs over 2 processors
+
+There is therefore more overhead to do with parallelisation with `furrr` than `foreach`.  
+
+How does `furrr` get on when the individual jobs are made quicker and the number of processors increased?
+
+```{r}
+plan(multiprocess(workers=4))
+ptm <- proc.time()
+many_models_furrr <- nested_data %>%
+  mutate(mod = furrr::future_map(data, slow_lm, sleep=0))
+proc.time() - ptm
+```
+
+And for `foreach`:
+
+```{r}
+plan(multiprocess(workers = 4))
+
+ptm <- proc.time()
+split_results <- foreach(i = 1:length(split_data)) %dopar% {
+    mutate(split_data[[i]], mod = purrr::map(data, slow_lm, sleep=0))
+  } %>%
+  bind_rows()
+proc.time() - ptm
+```
+
+We can see here that `foreach` is slightly quicker.  
+
+## Conclusions
+
+`furrr` provides a very convenient way of parallelising analysis code.  However, if the number of parallel tasks greatly exceeds the number of processors available, it can be beneficial to reduce the number of tasks by chunking the data frame instead.
+
