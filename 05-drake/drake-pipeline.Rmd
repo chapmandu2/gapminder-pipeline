@@ -46,6 +46,8 @@ slow_lm <- function(df, sleep=0) {
 ## Set up simple plan
 
 ```{r}
+drake::clean(destroy=TRUE)
+
 gm_pipeline_simple <- drake_plan(
   data_simple = gapminder::gapminder,
   plot_simple = ggplot(data_simple, aes(x=year, y=lifeExp, group=country, color=continent)) + 
@@ -68,6 +70,8 @@ readd(plot_simple)
 ## Set up more complex plan
 
 ```{r}
+drake::clean(destroy=TRUE)
+
 gm_pipeline_complex <- drake_plan(
   data = gapminder::gapminder,
   many_models = data %>%
@@ -82,8 +86,7 @@ gm_pipeline_complex <- drake_plan(
   plot = ggplot(all_countries_coefficients, aes(continent, estimate, color = continent)) +
     geom_violin() +
     geom_point(position = position_jitter(width=0.3)) +
-    theme_bw(),
-  strings_in_dots = "literals"
+    theme_bw()
 )
 
 ```
