@@ -1,0 +1,168 @@
+---
+title: "Parallelised Analyses"
+author: Phil Chapman
+date: 2019-01-28
+output: 
+    html_document:
+        number_sections: yes
+        theme: cosmo
+        highlight: tango
+        toc: yes
+        toc_depth: 3
+        code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+
+
+# Set up
+
+## Load R libraries
+
+```{r, message=FALSE}
+library(dplyr)
+library(purrr)
+library(furrr)
+library(ggplot2)
+library(gapminder)
+library(tidyr)
+library(future)
+library(foreach)
+library(doFuture)
+```
+
+# Working with computationally expensive models
+
+## Previously
+
+Previously we made multiple models with `purrr::map`
+
+```{r}
+nested_data <- gapminder %>%
+  group_by(continent, country) %>%
+  tidyr::nest() 
+
+ptm <- proc.time()
+many_models <- nested_data %>%
+  mutate(mod = purrr::map(data, ~ lm(lifeExp ~ year, .)))
+many_models
+proc.time() - ptm
+```
+
+## Slow fitting models
+
+In the previous example, the `lm` function is being run 142 times, once for each country. This is fine as the model fits very quickly, but what happens if the function is slower?
+
+First let's define a function called `slow_lm` which goes to sleep for a period of time in addition to fitting the model
+
+```{r}
+slow_lm <- function(df, sleep=0) {
+  Sys.sleep(sleep)
+  lm(lifeExp ~ year, df)
+}
+```
+
+Now when we fit the model, it takes longer (unsurprisingly):
+
+```{r}
+ptm <- proc.time()
+many_models_slow <- nested_data %>%
+  mutate(mod = purrr::map(data, slow_lm, sleep=0.02))
+proc.time() - ptm
+
+```
+
+# Parallelisation
+
+## Using furrr
+
+The `furrr` library which allows us to use the `future` package and its abilities to do parallel computation - each model fit is split off into its own process:
+
+```{r}
+plan(multiprocess(workers=2))
+ptm <- proc.time()
+many_models_furrr <- nested_data %>%
+  mutate(mod = furrr::future_map(data, slow_lm, sleep=0.02))
+proc.time() - ptm
+```
+
+## Using foreach
+
+The other approach is to break the data frame into chunks and process each one seperately using `foreach`.
+
+First split into a list of 4 data frames
+
+```{r}
+split_data <- nested_data %>% 
+  mutate(proc_grp = sample(1:4, size = nrow(.), replace=TRUE)) %>%
+  split(.$proc_grp)
+length(split_data)
+```
+
+Then use foreach.  This works but is much more code than using `furrr`!
+
+```{r}
+registerDoFuture()
+plan(multiprocess(workers = 2))
+
+ptm <- proc.time()
+split_results <- foreach(i = 1:length(split_data)) %dopar% {
+    mutate(split_data[[i]], mod = purrr::map(data, slow_lm, sleep=0.02))
+  } %>%
+  bind_rows()
+proc.time() - ptm
+
+```
+
+## Comparisons
+
+Although there seems very little difference in the examples above, the following is happening behind the scences:
+
+- furrr creates 142 seperate jobs over 2 processors
+- foreach creates 4 jobs over 2 processors
+
+There is therefore more overhead to do with parallelisation with `furrr` than `foreach`.  
+
+How does `furrr` get on when the individual jobs are made quicker and the number of processors increased?
+
+```{r}
+plan(multiprocess(workers=4))
+ptm <- proc.time()
+many_models_furrr <- nested_data %>%
+  mutate(mod = furrr::future_map(data, slow_lm, sleep=0))
+proc.time() - ptm
+```
+
+And for `foreach`:
+
+```{r}
+plan(multiprocess(workers = 4))
+
+ptm <- proc.time()
+split_results <- foreach(i = 1:length(split_data)) %dopar% {
+    mutate(split_data[[i]], mod = purrr::map(data, slow_lm, sleep=0))
+  } %>%
+  bind_rows()
+proc.time() - ptm
+```
+
+We can see here that `foreach` is slightly quicker.  
+
+## Conclusions
+
+`furrr` provides a very convenient way of parallelising analysis code.  However, if the number of parallel tasks greatly exceeds the number of processors available, it can be beneficial to reduce the number of tasks by chunking the data frame instead.
+
+# Next steps
+
+Only used processors on a single computer here.  Various ways of extending to ad-hoc computer clusters, HPC and the cloud.  In particular the batchtools and future.batchtools packages allow the approaches above to be extended to a variety of environments including SGE, Torque and Slurm HPCs and Docker Swarm.
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
