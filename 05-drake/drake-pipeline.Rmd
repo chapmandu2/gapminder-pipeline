@@ -37,11 +37,46 @@ library(clustermq)
 
 ## Define functions
 
+### Function to fit linear model
+
 ```{r}
 slow_lm <- function(df, sleep=0) {
   Sys.sleep(sleep)
   lm(lifeExp ~ year, df)
 }
+```
+
+### Function to plot slopes
+
+```{r}
+plot_slopes <- function(df) {
+  ggplot(df, aes(continent, estimate, color = continent)) +
+    geom_violin() +
+    geom_point(position = position_jitter(width=0.3)) +
+    theme_bw()
+}
+
+```
+
+### Function to calculate slope
+
+```{r}
+calculate_slope <- function(df, country, sleep) {
+  
+  dat <- df %>%
+    dplyr::filter(country == !!country)
+  
+  mod <- slow_lm(dat, sleep = sleep)
+  
+  dat %>%
+    distinct(continent, country) %>%
+    mutate_all(as.character) %>%
+    mutate(estimate=coef(mod)[['year']])
+
+}
+
+calculate_slope(gapminder, 'New Zealand', 0)
+
 ```
 
 ## Set up simple plan
@@ -79,15 +114,12 @@ gm_pipeline_complex <- drake_plan(
     group_by(continent, country) %>%
     tidyr::nest() %>%
     mutate(mod = purrr::map(data, slow_lm)),
-  all_countries_coefficients = many_models %>%
+  results = many_models %>%
     mutate(tidy_mod = purrr::map(mod, broom::tidy)) %>%
     dplyr::select(-data, -mod) %>%
     tidyr::unnest() %>%
     dplyr::filter(term == 'year'),
-  plot = ggplot(all_countries_coefficients, aes(continent, estimate, color = continent)) +
-    geom_violin() +
-    geom_point(position = position_jitter(width=0.3)) +
-    theme_bw()
+  plot = plot_slopes(results)
 )
 
 ```
@@ -101,25 +133,11 @@ make(gm_pipeline_complex)
 View output:
 
 ```{r}
-readd(all_countries_coefficients)
+readd(results)
 readd(plot)
 ```
 
 ## Set up very complex plan
-
-```{r}
-calculate_slope <- function(df, country, sleep) {
-  mod <- df %>%
-    dplyr::filter(country == !!country) %>%
-    slow_lm(sleep = sleep)
-  
-    data_frame(country=!!country, slope=coef(mod)[['year']])
-}
-
-calculate_slope(gapminder, 'New Zealand', 0)
-
-
-```
 
 Define the plan
 
@@ -127,7 +145,6 @@ Define the plan
 drake::clean(destroy=TRUE)
 
 gm_countries <- gapminder %>% distinct(country) %>% 
-  #slice(1:20) %>% 
   unlist() %>% unname() %>% as.character()
 
 par_plan = drake_plan(
@@ -141,14 +158,7 @@ par_plan = drake_plan(
     bind_rows(results_par),
     transform = combine(results_par)
   ),
-  plot_data = data_par %>%
-    distinct(continent, country) %>%
-    mutate_all(as.character) %>%
-    inner_join(results, by='country'),
-  plot = ggplot(plot_data, aes(continent, slope, color = continent)) +
-    geom_violin() +
-    geom_point(position = position_jitter(width=0.3)) +
-    theme_bw(),
+plot = plot_slopes(results),
   trace=TRUE
 )
 ```
@@ -161,7 +171,7 @@ par_plan
 
 Make the plan
 ```{r}
-make(par_plan)
+make(par_plan, verbose=0)
 ```
 
 View the output
